@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.composeMultiplatform)
-    id("module.publication")
+    id(libs.plugins.kotlin.multiplatform.get().pluginId)
+    id(libs.plugins.android.library.get().pluginId)
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.compose.compiler)
+//    id("module.publication")
 }
 
 kotlin {
     androidTarget {
         publishLibraryVariants("release")
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "11"
-            }
-        }
     }
 
     iosX64()
@@ -36,16 +32,23 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project.dependencies.platform(libs.compose.bom))
+            implementation(project.dependencies.platform(libs.coroutines.bom))
+            implementation(project.dependencies.platform(libs.coil.bom))
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
-            implementation(libs.components.resources)
+            implementation(compose.components.resources)
             implementation(libs.paging.common)
             implementation(libs.paging.compose.common)
+
+            implementation(libs.coil.compose)
+            implementation(libs.coil.core)
+
+            implementation(libs.kamel.image)
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-        }
+
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -53,7 +56,13 @@ kotlin {
             implementation(libs.camera.camera2)
             implementation(libs.camera.lifecycle)
             implementation(libs.camera.view)
-            implementation(libs.kotlinx.coroutines.guava)
+            implementation(libs.coroutines.guava)
+            implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+            implementation(libs.kamel.decoder.resizing)
+            //增加kotlin反射库
+           implementation(kotlin("reflect"))
+
         }
     }
 }
@@ -66,7 +75,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+        targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
     }
 }

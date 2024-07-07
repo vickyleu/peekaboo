@@ -18,12 +18,14 @@ package com.preat.peekaboo.ui.gallery
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import coil3.compose.LocalPlatformContext
 
 @ExperimentalPeekabooGalleryApi
 @Composable
-expect fun PeekabooGallery(
+internal expect fun PeekabooGallery(
     modifier: Modifier = Modifier,
     state: GalleryPickerState = rememberGalleryPickerState(),
     lazyGridState: LazyGridState = rememberLazyGridState(),
@@ -33,3 +35,29 @@ expect fun PeekabooGallery(
     permissionDeniedContent: @Composable () -> Unit = {},
     onImageSelected: (ByteArray?) -> Unit,
 )
+
+@OptIn(InternalComposeUiApi::class, ExperimentalPeekabooGalleryApi::class)
+@Composable
+fun PeekabooGalleryWrapper(
+    modifier: Modifier = Modifier,
+    state: GalleryPickerState = rememberGalleryPickerState(),
+    lazyGridState: LazyGridState = rememberLazyGridState(),
+    backgroundColor: Color = Color.Black,
+    header: @Composable () -> Unit = {},
+    progressIndicator: @Composable () -> Unit = {},
+    permissionDeniedContent: @Composable () -> Unit = {},
+    onImageSelected: (ByteArray?) -> Unit,
+) {
+    val context = LocalPlatformContext.current
+    PeekabooGallery(
+        modifier = modifier,
+        state = state,
+        lazyGridState = lazyGridState,
+        backgroundColor = backgroundColor,
+        header = header,
+        progressIndicator = progressIndicator,
+        permissionDeniedContent = permissionDeniedContent,
+        onImageSelected = onImageSelected,
+    )
+}
+

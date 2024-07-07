@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.preat.peekaboo.android">
 
+    <uses-sdk tools:overrideLibrary="io.kamel.image" />
+
     <application
         android:label="peekaboo"
         android:allowBackup="false"

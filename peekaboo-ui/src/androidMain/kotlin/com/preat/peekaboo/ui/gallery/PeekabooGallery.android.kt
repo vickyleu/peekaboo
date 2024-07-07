@@ -27,9 +27,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -38,16 +40,27 @@ import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.cash.paging.compose.LazyPagingItems
 import app.cash.paging.compose.collectAsLazyPagingItems
+import coil3.PlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.size.Scale
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -56,6 +69,17 @@ import com.preat.peekaboo.ui.gallery.model.PeekabooMediaImage
 import com.preat.peekaboo.ui.gallery.repository.PeekabooGalleryRepositoryImpl
 import com.preat.peekaboo.ui.gallery.viewmodel.PeekabooGalleryViewModel
 import com.preat.peekaboo.ui.gallery.viewmodel.PeekabooGalleryViewModelFactory
+import io.kamel.core.ExperimentalKamelApi
+import io.kamel.core.config.KamelConfig
+import io.kamel.core.config.takeFrom
+import io.kamel.image.config.Default
+import io.kamel.image.config.animatedImageDecoder
+import io.kamel.image.config.imageBitmapDecoder
+import io.kamel.image.config.imageBitmapResizingDecoder
+import io.kamel.image.config.imageVectorDecoder
+import io.kamel.image.config.resourcesFetcher
+import io.kamel.image.config.resourcesIdMapper
+import io.kamel.image.config.svgDecoder
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalPermissionsApi::class)
@@ -87,11 +111,11 @@ actual fun PeekabooGallery(
     val peekabooGalleryViewModel: PeekabooGalleryViewModel =
         viewModel(
             factory =
-                PeekabooGalleryViewModelFactory(
-                    PeekabooGalleryRepositoryImpl(
-                        context,
-                    ),
+            PeekabooGalleryViewModelFactory(
+                PeekabooGalleryRepositoryImpl(
+                    context,
                 ),
+            ),
         )
 
     val lazyPeekabooGalleryImages: LazyPagingItems<PeekabooMediaImage> =
@@ -116,27 +140,51 @@ actual fun PeekabooGallery(
                         },
                     ) { index ->
                         lazyPeekabooGalleryImages[index]?.let { photo ->
-                            val bitmap = getOriginalImageByteArray(context, photo.uri)?.toBitmap()
-                            bitmap?.let {
-                                Card(
-                                    shape = RoundedCornerShape(state.cornerSize.dp),
-                                    modifier = Modifier.aspectRatio(1f),
-                                    onClick = {
-                                        onImageSelected(
-                                            getOriginalImageByteArray(
-                                                context,
-                                                photo.uri,
-                                            ),
-                                        )
-                                    },
-                                ) {
-                                    Image(
-                                        bitmap = it.asImageBitmap(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.clip(shape = RoundedCornerShape(state.cornerSize.dp)),
+                            var size by remember {
+                                mutableStateOf(Size.Zero)
+                            }
+                            Card(
+                                shape = RoundedCornerShape(state.cornerSize.dp),
+                                modifier = Modifier.aspectRatio(1f),
+                                onClick = {
+                                    onImageSelected(
+                                        getOriginalImageByteArray(
+                                            context,
+                                            photo.uri,
+                                        ),
                                     )
+                                },
+                            ) {
+                                with(LocalDensity.current) {
+                                    BoxWithConstraints(
+                                        modifier = Modifier.fillMaxSize()
+                                            .onGloballyPositioned {
+                                                size = it.size.toSize()
+                                            },
+                                    ) {
+                                        maxWidth
+
+                                        if (!size.isEmpty()) {
+                                            val painter = rememberAsyncImagePainter(
+                                                model = ImageRequest.Builder(LocalContext.current)
+                                                    .data(photo.uri)
+                                                    .scale(Scale.FILL)
+                                                    .build(),
+                                            )
+                                            Image(
+                                                painter = painter,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.clip(
+                                                    shape = RoundedCornerShape(
+                                                        state.cornerSize.dp,
+                                                    ),
+                                                ),
+                                            )
+                                        }
+                                    }
                                 }
+
                             }
                         }
                     }
@@ -161,12 +209,27 @@ private fun getOriginalImageByteArray(
     return context.contentResolver.openInputStream(uri)?.use { inputStream ->
         val bitmap = BitmapFactory.decodeStream(inputStream)
         val rotatedBitmap = rotateImageIfRequired(context, bitmap, uri)
-
+        val resizedBitmap = Bitmap.createBitmap(rotatedBitmap)
         ByteArrayOutputStream().apply {
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, this)
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, this)
         }.toByteArray()
     }
 }
+//
+//private fun getOriginalImageByteArray(
+//    context: Context,
+//    uri: Uri,
+//    size: Size,
+//): ByteArray? {
+//    return context.contentResolver.openInputStream(uri)?.use { inputStream ->
+//        val bitmap = BitmapFactory.decodeStream(inputStream)
+//        val rotatedBitmap = rotateImageIfRequired(context, bitmap, uri)
+//
+//        ByteArrayOutputStream().apply {
+//            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, this)
+//        }.toByteArray()
+//    }
+//}
 
 private fun rotateImageIfRequired(
     context: Context,
@@ -203,3 +266,4 @@ private fun rotateImageIfRequired(
 private fun ByteArray.toBitmap(): Bitmap {
     return BitmapFactory.decodeByteArray(this, 0, this.size)
 }
+

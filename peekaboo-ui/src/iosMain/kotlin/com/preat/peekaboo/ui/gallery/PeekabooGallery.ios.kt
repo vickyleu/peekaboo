@@ -19,8 +19,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -35,16 +37,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
+import coil3.PlatformContext
+import coil3.compose.LocalPlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.size.Scale
+import io.kamel.core.config.KamelConfig
+import io.kamel.core.config.takeFrom
+import io.kamel.image.config.Default
+import io.kamel.image.config.animatedImageDecoder
+import io.kamel.image.config.imageBitmapDecoder
+import io.kamel.image.config.imageVectorDecoder
+import io.kamel.image.config.svgDecoder
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.refTo
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -56,9 +77,12 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSize
 import platform.CoreGraphics.CGSizeMake
+import platform.Foundation.NSData
 import platform.Foundation.NSPredicate
+import platform.Foundation.getBytes
 import platform.Photos.PHAsset
 import platform.Photos.PHAssetMediaTypeImage
 import platform.Photos.PHAuthorizationStatusAuthorized
@@ -67,9 +91,53 @@ import platform.Photos.PHImageContentModeAspectFill
 import platform.Photos.PHImageManager
 import platform.Photos.PHImageRequestOptions
 import platform.Photos.PHPhotoLibrary
+import platform.UIKit.UIGraphicsBeginImageContextWithOptions
+import platform.UIKit.UIGraphicsEndImageContext
+import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import platform.posix.memcpy
+
+@OptIn(ExperimentalForeignApi::class)
+fun getOriginalImageByteArray(
+    image: UIImage
+): ByteArray? {
+//    val sizeImage = image.size.useContents { Size(width.toFloat(), height.toFloat()) }
+//    val resizedImage =
+//        resizeImage(image, newSize = CGSizeMake(size.width.toDouble(), size.height.toDouble()))
+    return image.toNSData()?.toByteArray()
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun resizeImage(image: UIImage, newSize: CValue<CGSize>): UIImage? {
+    UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+    image.drawInRect(
+        CGRectMake(
+            0.0,
+            0.0,
+            newSize.useContents { width },
+            newSize.useContents { height },
+        ),
+    )
+    val newImage = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+    return newImage
+}
+
+
+fun UIImage.toNSData(): NSData? {
+    return UIImageJPEGRepresentation(this, 1.0)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun NSData.toByteArray(): ByteArray {
+    memScoped {
+        val buffer = ByteArray(this@toByteArray.length.toInt())
+        this@toByteArray.getBytes(buffer.refTo(0).getPointer(this))
+        return buffer
+    }
+}
+
 
 @OptIn(ExperimentalMaterialApi::class)
 @ExperimentalPeekabooGalleryApi
@@ -109,23 +177,48 @@ actual fun PeekabooGallery(
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
                     items(images.size) { index ->
-                        val imageByteArray = images[index].toByteArray()
-                        imageByteArray?.toImageBitmap()?.let {
-                            Card(
-                                shape = RoundedCornerShape(state.cornerSize.dp),
-                                modifier =
-                                    Modifier
-                                        .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(state.cornerSize.dp)),
-                                onClick = {
-                                    onImageSelected(imageByteArray)
-                                },
-                            ) {
-                                Image(
-                                    bitmap = it,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                        val item = images[index]
+                        var size by remember {
+                            mutableStateOf(Size.Zero)
+                        }
+                        Card(
+                            shape = RoundedCornerShape(state.cornerSize.dp),
+                            modifier =
+                            Modifier
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(state.cornerSize.dp)),
+                            onClick = {
+                                onImageSelected(
+                                    getOriginalImageByteArray(item),
                                 )
+                            },
+                        ) {
+                            with(LocalDensity.current) {
+                                BoxWithConstraints(
+                                    modifier = Modifier.fillMaxSize()
+                                        .onGloballyPositioned {
+                                            size = it.size.toSize()
+                                        },
+                                ) {
+                                    if (!size.isEmpty()) {
+                                        val painter = rememberAsyncImagePainter(
+                                            model = ImageRequest.Builder(LocalPlatformContext.current)
+                                                .data(item)
+                                                .scale(Scale.FILL)
+                                                .build(),
+                                        )
+                                        Image(
+                                            painter = painter,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.clip(
+                                                shape = RoundedCornerShape(
+                                                    state.cornerSize.dp,
+                                                ),
+                                            ),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -155,7 +248,12 @@ private suspend fun fetchImagesFromGallery(): List<UIImage> =
         val photos = PHAsset.fetchAssetsWithOptions(fetchOptions)
         (0 until photos.count.toInt()).mapNotNull { index ->
             val asset = photos.objectAtIndex(index.toULong()) as PHAsset
-            asset.getAssetThumbnail(CGSizeMake(asset.pixelWidth.toDouble(), asset.pixelHeight.toDouble()))
+            asset.getAssetThumbnail(
+                CGSizeMake(
+                    asset.pixelWidth.toDouble(),
+                    asset.pixelHeight.toDouble(),
+                ),
+            )
         }
     }
 
@@ -187,7 +285,8 @@ private fun UIImage.toByteArray(): ByteArray? {
     }
 }
 
-private fun ByteArray.toImageBitmap(): ImageBitmap = Image.makeFromEncoded(this).toComposeImageBitmap()
+private fun ByteArray.toImageBitmap(): ImageBitmap =
+    Image.makeFromEncoded(this).toComposeImageBitmap()
 
 private fun checkPhotoLibraryAuthorization(): Boolean {
     val status = PHPhotoLibrary.authorizationStatus()

@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.preat.peekaboo.common.icon.IconClose
 import com.preat.peekaboo.common.icon.IconWarning
 import com.preat.peekaboo.ui.gallery.ExperimentalPeekabooGalleryApi
-import com.preat.peekaboo.ui.gallery.PeekabooGallery
+import com.preat.peekaboo.ui.gallery.PeekabooGalleryWrapper
 
 @OptIn(ExperimentalPeekabooGalleryApi::class)
 @Composable
@@ -49,7 +49,7 @@ internal fun PeekabooGalleryView(
     onBack: () -> Unit,
 ) {
     Box(modifier = modifier) {
-        PeekabooGallery(
+        PeekabooGalleryWrapper(
             modifier = Modifier.fillMaxSize(),
             header = {
                 Row(
@@ -75,9 +75,9 @@ internal fun PeekabooGalleryView(
             progressIndicator = {
                 CircularProgressIndicator(
                     modifier =
-                        Modifier
-                            .size(60.dp)
-                            .align(Alignment.Center),
+                    Modifier
+                        .size(60.dp)
+                        .align(Alignment.Center),
                     color = Color.White,
                     strokeWidth = 6.dp,
                 )
@@ -85,9 +85,9 @@ internal fun PeekabooGalleryView(
             permissionDeniedContent = {
                 Column(
                     modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(color = MaterialTheme.colors.background),
+                    Modifier
+                        .fillMaxSize()
+                        .background(color = MaterialTheme.colors.background),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {

@@ -15,38 +15,50 @@
  */
 @file:Suppress("DSL_SCOPE_VIOLATION")
 
-import com.diffplug.gradle.spotless.SpotlessExtension
+//import com.diffplug.gradle.spotless.SpotlessExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("root.publication")
+//    id("root.publication")
     // trick: for the same plugin versions in all sub-modules
-    alias(libs.plugins.androidApplication).apply(false)
-    alias(libs.plugins.androidLibrary).apply(false)
-    alias(libs.plugins.kotlinAndroid).apply(false)
-    alias(libs.plugins.kotlinMultiplatform).apply(false)
-    alias(libs.plugins.composeMultiplatform).apply(false)
-    alias(libs.plugins.spotless).apply(false)
+    id(libs.plugins.android.application.get().pluginId).apply(false)
+    id(libs.plugins.android.library.get().pluginId).apply(false)
+//    alias(libs.plugins.kotlinAndroid).apply(false)
+    id(libs.plugins.kotlin.multiplatform.get().pluginId).apply(false)
+    alias(libs.plugins.jetbrains.compose).apply(false)
+    alias(libs.plugins.compose.compiler).apply(false)
+//    alias(libs.plugins.spotless).apply(false)
 }
 
 allprojects {
-    apply(plugin = rootProject.libs.plugins.spotless.get().pluginId)
-    configure<SpotlessExtension> {
-        kotlin {
-            target("**/*.kt")
-            targetExclude("**/build/")
-            ktlint().setEditorConfigPath("${project.rootDir}/.editorconfig")
-            licenseHeaderFile(rootProject.file("spotless/copyright.txt"))
-        }
-        kotlinGradle {
-            target("**/*.gradle.kts")
-            targetExclude("**/build/")
-            ktlint().setEditorConfigPath("${project.rootDir}/.editorconfig")
-            licenseHeaderFile(rootProject.file("spotless/copyright.txt"), "(^(?![\\/ ]\\*).*$)")
+//    apply(plugin = rootProject.libs.plugins.spotless.get().pluginId)
+//    configure<SpotlessExtension> {
+//        kotlin {
+//            target("**/*.kt")
+//            targetExclude("**/build/")
+//            ktlint().setEditorConfigPath("${project.rootDir}/.editorconfig")
+//            licenseHeaderFile(rootProject.file("spotless/copyright.txt"))
+//        }
+//        kotlinGradle {
+//            target("**/*.gradle.kts")
+//            targetExclude("**/build/")
+//            ktlint().setEditorConfigPath("${project.rootDir}/.editorconfig")
+//            licenseHeaderFile(rootProject.file("spotless/copyright.txt"), "(^(?![\\/ ]\\*).*$)")
+//        }
+//    }
+    configurations.all {
+        resolutionStrategy {
+            eachDependency {
+                if (requested.group.startsWith("io.ktor")) {
+                    useVersion(libs.versions.ktor.bom.get())
+                }
+            }
         }
     }
-
     tasks.withType<KotlinCompile>().all {
-        kotlinOptions { freeCompilerArgs += "-Xexpect-actual-classes" }
+        compilerOptions {
+            freeCompilerArgs.add("-Xopt-in=kotlin.RequiresOptIn")
+            freeCompilerArgs.add("-Xexpect-actual-classes")
+        }
     }
 }
