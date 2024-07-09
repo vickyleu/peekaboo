@@ -54,13 +54,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Scale
-import io.kamel.core.config.KamelConfig
-import io.kamel.core.config.takeFrom
-import io.kamel.image.config.Default
-import io.kamel.image.config.animatedImageDecoder
-import io.kamel.image.config.imageBitmapDecoder
-import io.kamel.image.config.imageVectorDecoder
-import io.kamel.image.config.svgDecoder
+
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.memScoped

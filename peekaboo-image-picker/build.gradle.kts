@@ -55,6 +55,18 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
+    publishing{
+        singleVariant("release"){
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+//    publishing {
+//        singleVariant("release") {
+//            withSourcesJar()
+//            withJavadocJar()
+//        }
+//    }
     compileOptions {
         sourceCompatibility =JavaVersion.toVersion(libs.versions.jvmTarget.get())
         targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())

@@ -1,3 +1,5 @@
+import com.android.build.gradle.internal.ide.kmp.KotlinAndroidSourceSetMarker.Companion.android
+
 /*
  * Copyright 2023-2024 onseok
  *
@@ -45,9 +47,8 @@ kotlin {
 
             implementation(libs.coil.compose)
             implementation(libs.coil.core)
-
-            implementation(libs.kamel.image)
         }
+
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
@@ -58,14 +59,11 @@ kotlin {
             implementation(libs.camera.view)
             implementation(libs.coroutines.guava)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
-
-            implementation(libs.kamel.decoder.resizing)
-            //增加kotlin反射库
-           implementation(kotlin("reflect"))
-
         }
     }
 }
+
+
 
 android {
     namespace = "com.preat.peekaboo.ui"
@@ -74,6 +72,21 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
+    lint{
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
+    }
+    publishing{
+        singleVariant("release"){
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+//    publishing {
+//        singleVariant("release") {
+//            withSourcesJar()
+//            withJavadocJar()
+//        }
+//    }
     compileOptions {
         sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
         targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())

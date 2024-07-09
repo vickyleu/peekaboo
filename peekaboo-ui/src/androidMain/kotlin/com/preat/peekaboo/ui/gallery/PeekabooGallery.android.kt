@@ -69,17 +69,7 @@ import com.preat.peekaboo.ui.gallery.model.PeekabooMediaImage
 import com.preat.peekaboo.ui.gallery.repository.PeekabooGalleryRepositoryImpl
 import com.preat.peekaboo.ui.gallery.viewmodel.PeekabooGalleryViewModel
 import com.preat.peekaboo.ui.gallery.viewmodel.PeekabooGalleryViewModelFactory
-import io.kamel.core.ExperimentalKamelApi
-import io.kamel.core.config.KamelConfig
-import io.kamel.core.config.takeFrom
-import io.kamel.image.config.Default
-import io.kamel.image.config.animatedImageDecoder
-import io.kamel.image.config.imageBitmapDecoder
-import io.kamel.image.config.imageBitmapResizingDecoder
-import io.kamel.image.config.imageVectorDecoder
-import io.kamel.image.config.resourcesFetcher
-import io.kamel.image.config.resourcesIdMapper
-import io.kamel.image.config.svgDecoder
+
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalPermissionsApi::class)

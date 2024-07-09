@@ -128,6 +128,7 @@ actual fun PeekabooCamera(
     }
 }
 
+@Suppress("DEPRECATION")
 @Composable
 private fun CameraWithGrantedPermission(
     state: PeekabooCameraState,
